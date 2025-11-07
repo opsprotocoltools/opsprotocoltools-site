@@ -1,73 +1,93 @@
 "use client";
 
-import { useState, useTransition, FormEvent, Suspense } from "react";
+import { FormEvent, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Loading login...</div>}>
-      <LoginContent />
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginForm />
     </Suspense>
   );
 }
 
-function LoginContent() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const error = searchParams?.get("error");
+  const urlError = searchParams?.get("error");
   const [loading, setLoading] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
+    setLocalError(null);
 
     const form = new FormData(e.currentTarget);
     const email = form.get("email") as string;
     const password = form.get("password") as string;
 
-    const res = await fetch("/api/auth/callback/credentials", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-      headers: { "Content-Type": "application/json" },
+    const result = await signIn("credentials", {
+      redirect: false,
+      email,
+      password,
+      callbackUrl: "/admin",
     });
 
     setLoading(false);
 
-    if (res.ok) router.push("/admin");
-    else alert("Login failed");
+    if (result?.ok) {
+      router.push("/admin");
+    } else {
+      setLocalError("Invalid email or password.");
+    }
   }
 
+  const errorMessage = localError || (urlError ? "Invalid email or password." : "");
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-100">
+    <div className="flex min-h-screen items-center justify-center bg-slate-100">
       <form
         onSubmit={handleSubmit}
-        className="bg-white shadow-md rounded-lg p-6 w-80"
+        className="w-80 rounded-xl bg-white p-6 shadow-md"
       >
-        <h2 className="text-xl font-semibold mb-4 text-center">Login</h2>
+        <h1 className="mb-4 text-center text-xl font-semibold">
+          Ops Protocol Tools
+        </h1>
 
-        {error && (
-          <p className="text-red-600 text-sm text-center mb-2">{error}</p>
+        {errorMessage && (
+          <p className="mb-3 text-center text-xs text-red-600">
+            {errorMessage}
+          </p>
         )}
 
+        <label className="mb-2 block text-xs font-medium text-slate-600">
+          Email
+        </label>
         <input
           name="email"
           type="email"
           required
-          placeholder="Email"
-          className="w-full mb-3 p-2 border rounded"
+          className="mb-3 w-full rounded border border-slate-300 px-2 py-1 text-sm"
+          placeholder="opsprotocoltools@gmail.com"
         />
+
+        <label className="mb-2 block text-xs font-medium text-slate-600">
+          Password
+        </label>
         <input
           name="password"
           type="password"
           required
+          className="mb-4 w-full rounded border border-slate-300 px-2 py-1 text-sm"
           placeholder="Password"
-          className="w-full mb-3 p-2 border rounded"
         />
 
         <button
-          disabled={loading}
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          disabled={loading}
+          className="w-full rounded bg-slate-900 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
         >
           {loading ? "Logging in..." : "Login"}
         </button>
