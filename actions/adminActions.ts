@@ -13,6 +13,7 @@ export async function toggleUserRole(formData: FormData) {
   const id = Number(formData.get("userId"));
   if (!id || Number.isNaN(id)) return;
 
+  // Prevent self-demotion
   if (id === admin.id) {
     throw new Error("Cannot modify your own admin role");
   }
@@ -45,6 +46,7 @@ export async function deleteUser(formData: FormData) {
   const id = Number(formData.get("userId"));
   if (!id || Number.isNaN(id)) return;
 
+  // Prevent deleting yourself
   if (id === admin.id) {
     throw new Error("Cannot delete your own account");
   }

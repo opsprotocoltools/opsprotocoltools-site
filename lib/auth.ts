@@ -1,13 +1,17 @@
 // lib/auth.ts
 
 import NextAuth, { NextAuthOptions } from "next-auth";
-import { getServerSession } from "next-auth/next";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from "bcryptjs";
+import { getServerSession } from "next-auth/next";
 import { prisma } from "@/lib/prisma";
+import { compare } from "bcryptjs";
 import { redirect } from "next/navigation";
-import { signIn, signOut } from "next-auth/react";
 import { logEvent } from "@/lib/analytics";
+import { User } from "@prisma/client";
+import {
+  signIn as nextAuthSignIn,
+  signOut as nextAuthSignOut,
+} from "next-auth/react";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -52,13 +56,11 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid email or password");
         }
 
-        await logEvent("auth.login_success", {
-          userId: user.id,
-        });
+        await logEvent("auth.login_success", { userId: user.id });
 
         return {
           id: String(user.id),
-          name: user.name ?? null,
+          name: user.name,
           email: user.email,
           role: user.role,
         } as any;
@@ -92,13 +94,13 @@ export const handlers = {
   POST: nextAuthHandler,
 };
 
-// Get current session (server-side)
+// Get current session on server
 export async function auth() {
   return getServerSession(authOptions);
 }
 
-// Require ADMIN; used by admin pages and actions
-export async function requireAdmin() {
+// Require ADMIN using real DB check
+export async function requireAdmin(): Promise<User> {
   const session = await auth();
 
   if (!session?.user?.email) {
@@ -106,7 +108,7 @@ export async function requireAdmin() {
   }
 
   const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
+    where: { email: session.user.email as string },
   });
 
   if (!user || user.role !== "ADMIN") {
@@ -116,5 +118,6 @@ export async function requireAdmin() {
   return user;
 }
 
-// Client helpers
-export { signIn, signOut };
+// Re-export client helpers
+export const signIn = nextAuthSignIn;
+export const signOut = nextAuthSignOut;

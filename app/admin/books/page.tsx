@@ -1,6 +1,4 @@
-﻿// app/admin/books/page.tsx
-
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
 
@@ -16,7 +14,7 @@ export default async function BooksAdminPage() {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Books</h1>
       <p className="text-xs text-slate-400">
-        Read-only view. Later this will be wired to your generation pipeline.
+        Read-only view. Admin CRUD for books can be added later.
       </p>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/40">

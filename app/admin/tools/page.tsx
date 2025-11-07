@@ -1,60 +1,63 @@
-import Link from "next/link";
+// app/admin/tools/page.tsx
+
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { logEvent } from "@/lib/analytics";
 
-export default async function AdminToolsPage() {
-  await requireAdmin();
+export default async function ToolsAdminPage() {
+  const admin = await requireAdmin();
+  await logEvent("admin.view_tools", { userId: admin.id });
+
   const tools = await prisma.tool.findMany({
     orderBy: { createdAt: "desc" },
   });
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-8 space-y-6">
-      <header className="flex items-baseline justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tools</h1>
-          <p className="text-xs text-slate-500">
-            Manage live Ops Protocol interactive tools.
-          </p>
-        </div>
-        <Link
-          href="#"
-          className="rounded-lg bg-slate-800 text-white px-3 py-1 text-xs hover:bg-slate-700"
-        >
-          + Add New Tool
-        </Link>
-      </header>
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold">Tools</h1>
+      <p className="text-xs text-slate-400">
+        Read-only list of tools. Admin management can be added later.
+      </p>
 
-      {tools.length === 0 ? (
-        <p className="text-sm text-slate-500">No tools found.</p>
-      ) : (
-        <ul className="space-y-2">
-          {tools.map((t) => (
-            <li
-              key={t.id}
-              className="rounded-lg border border-slate-200 bg-white p-4 text-sm flex justify-between"
-            >
-              <div>
-                <p className="font-medium text-slate-800">{t.name}</p>
-                <p className="text-xs text-slate-500">{t.slug}</p>
-              </div>
-              <div className="flex gap-2">
-                <Link
-                  href={`/admin/tools/${t.id}`}
-                  className="px-2 py-1 text-xs border border-slate-300 rounded hover:bg-slate-50"
+      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/40">
+        <table className="min-w-full text-xs">
+          <thead className="bg-slate-900/80 text-slate-400">
+            <tr>
+              <th className="px-3 py-2 text-left">ID</th>
+              <th className="px-3 py-2 text-left">Name</th>
+              <th className="px-3 py-2 text-left">Slug</th>
+              <th className="px-3 py-2 text-left">URL</th>
+              <th className="px-3 py-2 text-left">Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tools.map((tool) => (
+              <tr
+                key={tool.id}
+                className="border-t border-slate-800/80 hover:bg-slate-900/70"
+              >
+                <td className="px-3 py-2">{tool.id}</td>
+                <td className="px-3 py-2">{tool.name}</td>
+                <td className="px-3 py-2">{tool.slug}</td>
+                <td className="px-3 py-2">{tool.url}</td>
+                <td className="px-3 py-2">
+                  {tool.createdAt.toISOString().slice(0, 10)}
+                </td>
+              </tr>
+            ))}
+            {tools.length === 0 && (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="px-3 py-4 text-center text-slate-500"
                 >
-                  Edit
-                </Link>
-                <button
-                  className="px-2 py-1 text-xs border border-red-300 text-red-600 rounded hover:bg-red-50"
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
+                  No tools defined.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
