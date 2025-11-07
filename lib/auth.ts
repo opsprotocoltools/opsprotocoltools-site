@@ -1,18 +1,16 @@
 // lib/auth.ts
 
-import NextAuth, { NextAuthOptions } from "next-auth";
+import { type NextAuthOptions, getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { getServerSession } from "next-auth/next";
 import { prisma } from "@/lib/prisma";
 import { compare } from "bcryptjs";
-import { redirect } from "next/navigation";
 import { logEvent } from "@/lib/analytics";
-import { User } from "@prisma/client";
 import {
   signIn as nextAuthSignIn,
   signOut as nextAuthSignOut,
 } from "next-auth/react";
 
+// NextAuth options (v4 style)
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
@@ -26,10 +24,7 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          await logEvent("auth.login_failed", {
-            metadata: { reason: "missing_credentials" },
-          });
-          throw new Error("Missing email or password");
+          throw new Error("Missing credentials");
         }
 
         const user = await prisma.user.findUnique({
@@ -38,9 +33,12 @@ export const authOptions: NextAuthOptions = {
 
         if (!user || !user.passwordHash) {
           await logEvent("auth.login_failed", {
-            metadata: { reason: "user_not_found", email: credentials.email },
+            metadata: {
+              reason: "user_not_found",
+              email: credentials.email,
+            },
           });
-          throw new Error("Invalid email or password");
+          return null;
         }
 
         const isValid = await compare(
@@ -53,13 +51,14 @@ export const authOptions: NextAuthOptions = {
             userId: user.id,
             metadata: { reason: "bad_password" },
           });
-          throw new Error("Invalid email or password");
+          return null;
         }
 
         await logEvent("auth.login_success", { userId: user.id });
 
+        // Object returned here becomes `user` in JWT callback
         return {
-          id: String(user.id),
+          id: user.id.toString(),
           name: user.name,
           email: user.email,
           role: user.role,
@@ -69,12 +68,14 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
+      // On login, copy role from user into token
       if (user) {
         token.role = (user as any).role ?? "USER";
       }
       return token;
     },
     async session({ session, token }) {
+      // Expose id + role on session.user
       if (session.user) {
         (session.user as any).id = token.sub;
         (session.user as any).role = token.role ?? "USER";
@@ -87,24 +88,17 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-const nextAuthHandler = NextAuth(authOptions);
-
-export const handlers = {
-  GET: nextAuthHandler,
-  POST: nextAuthHandler,
-};
-
-// Get current session on server
+// Helper to get the current session on the server
 export async function auth() {
   return getServerSession(authOptions);
 }
 
-// Require ADMIN using real DB check
-export async function requireAdmin(): Promise<User> {
+// Require ADMIN role on the server
+export async function requireAdmin() {
   const session = await auth();
 
   if (!session?.user?.email) {
-    redirect("/login");
+    throw new Error("Unauthorized");
   }
 
   const user = await prisma.user.findUnique({
@@ -118,6 +112,6 @@ export async function requireAdmin(): Promise<User> {
   return user;
 }
 
-// Re-export client helpers
+// Client-side helpers (used in login page etc.)
 export const signIn = nextAuthSignIn;
 export const signOut = nextAuthSignOut;
