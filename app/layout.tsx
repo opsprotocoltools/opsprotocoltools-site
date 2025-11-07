@@ -1,25 +1,45 @@
-import "../styles/globals.css";
+// app/layout.tsx
+
+import "./globals.css";
 import type { ReactNode } from "react";
 
 export const metadata = {
   title: "Ops Protocol Tools",
-  description: "Bridge Theory, Co-Parenting Systems, and Tools.",
+  description: "Admin-grade systems for operations, writing, and analytics.",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout(
+  { children }: { children: ReactNode }
+) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-white text-gray-900">
-        <nav className="p-4 border-b">
-          <a href="/" className="font-semibold mr-4">Home</a>
-          <a href="/tools/bridge" className="mr-4">Bridge Tracker</a>
-          <a href="/tools/phase-map" className="mr-4">Phase Map</a>
-          <a href="/tools/decision-coach" className="mr-4">Decision Coach</a>
-          <a href="/tools/assessments" className="mr-4">Assessments</a>
-          <a href="/tools/simulator" className="mr-4">Simulator</a>
-          <a href="/tools/feedback" className="mr-4">Feedback</a>
-        </nav>
-        <main className="p-6">{children}</main>
+      <body>
+        <div className="min-h-screen bg-slate-950 text-slate-100">
+          <header className="border-b border-slate-800">
+            <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-xl bg-cyan-500/90" />
+                <span className="font-semibold tracking-tight">
+                  Ops Protocol Tools
+                </span>
+              </div>
+              <nav className="flex gap-4 text-sm text-slate-300">
+                <a href="/">Home</a>
+                <a href="/books">Books</a>
+                <a href="/bridge">Bridge</a>
+                <a href="/phase-map">Phase Map</a>
+                <a href="/coach">Coach</a>
+                <a href="/pricing">Pricing</a>
+                <a href="/login" className="font-medium text-cyan-400">
+                  Admin
+                </a>
+              </nav>
+            </div>
+          </header>
+          <main className="mx-auto max-w-6xl px-4 py-8">
+            {children}
+          </main>
+        </div>
       </body>
     </html>
   );

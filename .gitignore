@@ -6,3 +6,5 @@ dist
 .env.*
 pnpm-lock.yaml
 yarn.lock
+
+/lib/generated/prisma
