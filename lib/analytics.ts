@@ -1,31 +1,34 @@
 // lib/analytics.ts
 
-import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
-
-export type AnalyticsMetadata = Prisma.InputJsonValue;
-
-type LogEventParams = {
-  userId?: number | null;
-  metadata?: AnalyticsMetadata;
-};
+import { prisma } from "./prisma";
 
 /**
- * Server-side analytics helper.
- * Persists events to the AnalyticsEvent table.
+ * Tiny helper to log operational events.
+ * Safe to call anywhere; failures are swallowed and logged to console.
  */
 export async function logEvent(
   type: string,
-  params: LogEventParams = {}
-): Promise<void> {
-  const { userId = null, metadata } = params;
-
-  await prisma.analyticsEvent.create({
-    data: {
-      type,
-      userId,
-      // Only set metadata when provided so types align with Prisma's NullableJson field
-      ...(metadata !== undefined ? { metadata } : {}),
-    },
-  });
+  options?: {
+    userId?: number | null;
+    metadata?: unknown;
+  }
+) {
+  try {
+    await prisma.analyticsEvent.create({
+      data: {
+        type,
+        userId:
+          typeof options?.userId === "number"
+            ? options.userId
+            : options?.userId ?? null,
+        metadata:
+          typeof options?.metadata === "undefined"
+            ? null
+            : (options.metadata as any),
+      },
+    });
+  } catch (err) {
+    // Do not break the app if analytics fails.
+    console.error("Failed to log analytics event:", err);
+  }
 }
