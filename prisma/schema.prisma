@@ -9,41 +9,42 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  name         String?
+  passwordHash String
+  role         Role      @default(USER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  accounts  Account[]
+  sessions  Session[]
+  events    AnalyticsEvent[]
+}
+
 enum Role {
   USER
   ADMIN
-}
-
-model User {
-  id              Int              @id @default(autoincrement())
-  email           String           @unique
-  name            String?
-  passwordHash    String
-  role            Role             @default(USER)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  accounts        Account[]
-  sessions        Session[]
-  analyticsEvents AnalyticsEvent[]
-  coachSessions   CoachSession[]
 }
 
 model Book {
   id        Int      @id @default(autoincrement())
   title     String
   slug      String   @unique
+  summary   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Tool {
-  id        Int      @id @default(autoincrement())
-  name      String
-  slug      String   @unique
-  url       String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  url         String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model AnalyticsEvent {
@@ -52,39 +53,23 @@ model AnalyticsEvent {
   metadata  Json?
   userId    Int?
   createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model KnowledgeChunk {
+  id        Int      @id @default(autoincrement())
+  domain    String
+  source    String
+  tags      String   // comma-separated tags
+  priority  Int
+  content   String
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user      User?    @relation(fields: [userId], references: [id])
+  @@unique([domain, source], name: "domain_source")
 }
 
-/*
-  AI Coach models (for structured conversations)
-*/
-
-model CoachSession {
-  id        Int             @id @default(autoincrement())
-  userId    Int?
-  createdAt DateTime        @default(now())
-
-  user      User?           @relation(fields: [userId], references: [id])
-  messages  CoachMessage[]
-}
-
-model CoachMessage {
-  id           Int           @id @default(autoincrement())
-  sessionId    Int
-  role         String        // "user" | "assistant"
-  mode         String        // "bridge" | "phase" | "sunday"
-  content      String        // raw text
-  structured   Json?         // normalized Ops Protocol view
-  createdAt    DateTime      @default(now())
-
-  session      CoachSession  @relation(fields: [sessionId], references: [id])
-}
-
-/*
-  NextAuth models (standard)
-*/
+/// NextAuth models (standard)
 
 model Account {
   id                Int       @id @default(autoincrement())
@@ -99,10 +84,8 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
 
   @@unique([provider, providerAccountId])
 }
@@ -112,17 +95,14 @@ model Session {
   sessionToken String   @unique
   userId       Int
   expires      DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
 }
 
 model VerificationToken {
   identifier String
-  token      String   @unique
+  token      String
   expires    DateTime
-  createdAt  DateTime @default(now())
 
   @@unique([identifier, token])
 }

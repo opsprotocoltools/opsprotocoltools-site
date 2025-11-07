@@ -1,38 +1,32 @@
 // prisma/seed.ts
 
-import { PrismaClient, Role } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = "opsprotocoltools@gmail.com";
-  const plainPassword = "8y6jK321!@#!";
+  console.log("Seeding admin user...");
 
-  const passwordHash = await bcrypt.hash(plainPassword, 10);
+  const passwordHash = await bcrypt.hash("Admin123!", 10);
 
-  // Ensure a single canonical admin user
   await prisma.user.upsert({
-    where: { email },
-    update: {
-      name: "Ops Protocol Admin",
-      passwordHash,
-      role: Role.ADMIN,
-    },
+    where: { email: "opsprotocoltools@gmail.com" },
+    update: { passwordHash, role: "ADMIN" },
     create: {
-      email,
+      email: "opsprotocoltools@gmail.com",
       name: "Ops Protocol Admin",
       passwordHash,
-      role: Role.ADMIN,
+      role: "ADMIN",
     },
   });
 
-  console.log("Seeded admin:", email);
+  console.log("Admin user seeded.");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("Seed error:", e);
     process.exit(1);
   })
   .finally(async () => {
