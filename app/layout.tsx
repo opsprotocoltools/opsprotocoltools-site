@@ -3,23 +3,23 @@ import { ReactNode } from "react";
 
 export const metadata = {
   title: "Ops Protocol Tools",
-  description: "Bridge Theory, Co-Parenting Systems, and Tools.",
+  description: "Bridge Theory, Co-Parenting Systems, and Tools",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-white text-gray-900">
-        <nav className="p-4 border-b">
-          <a href="/" className="font-semibold mr-4">Home</a>
-          <a href="/tools/bridge" className="mr-4">Bridge Tracker</a>
-          <a href="/tools/phase-map" className="mr-4">Phase Map</a>
-          <a href="/tools/decision-coach" className="mr-4">Decision Coach</a>
-          <a href="/tools/assessments" className="mr-4">Assessments</a>
-          <a href="/tools/simulator" className="mr-4">Simulator</a>
-          <a href="/tools/feedback" className="mr-4">Feedback</a>
+      <body className="max-w-5xl mx-auto p-6">
+        <nav className="flex gap-4 mb-6 border-b pb-2">
+          <a href="/">Home</a>
+          <a href="/tools/bridge">Bridge Tracker</a>
+          <a href="/tools/phase-map">Phase Map</a>
+          <a href="/tools/decision-coach">Decision Coach</a>
+          <a href="/tools/assessments">Assessments</a>
+          <a href="/tools/simulator">Simulator</a>
+          <a href="/tools/feedback">Feedback</a>
         </nav>
-        <main className="p-6">{children}</main>
+        {children}
       </body>
     </html>
   );
