@@ -14,14 +14,17 @@ export default async function ToolsAdminPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Tools</h1>
-      <p className="text-xs text-slate-400">
-        Read-only list of tools. Admin management can be added later.
-      </p>
+      <header className="space-y-1">
+        <h1 className="text-xl font-semibold text-slate-50">Tools</h1>
+        <p className="text-[10px] text-slate-400">
+          Registry of Ops Protocol tools and endpoints. Used for internal
+          mapping and future UI integration.
+        </p>
+      </header>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/40">
-        <table className="min-w-full text-xs">
-          <thead className="bg-slate-900/80 text-slate-400">
+      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/70 text-[10px]">
+        <table className="min-w-full">
+          <thead className="bg-slate-900/90 text-slate-400">
             <tr>
               <th className="px-3 py-2 text-left">ID</th>
               <th className="px-3 py-2 text-left">Name</th>
@@ -36,11 +39,13 @@ export default async function ToolsAdminPage() {
                 key={tool.id}
                 className="border-t border-slate-800/80 hover:bg-slate-900/70"
               >
-                <td className="px-3 py-2">{tool.id}</td>
-                <td className="px-3 py-2">{tool.name}</td>
-                <td className="px-3 py-2">{tool.slug}</td>
-                <td className="px-3 py-2">{tool.url}</td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 text-slate-400">{tool.id}</td>
+                <td className="px-3 py-2 text-slate-100">{tool.name}</td>
+                <td className="px-3 py-2 text-slate-300">{tool.slug}</td>
+                <td className="px-3 py-2 text-cyan-300 break-all">
+                  {tool.url}
+                </td>
+                <td className="px-3 py-2 text-slate-400">
                   {tool.createdAt.toISOString().slice(0, 10)}
                 </td>
               </tr>
@@ -51,7 +56,7 @@ export default async function ToolsAdminPage() {
                   colSpan={5}
                   className="px-3 py-4 text-center text-slate-500"
                 >
-                  No tools defined.
+                  No tools registered yet.
                 </td>
               </tr>
             )}

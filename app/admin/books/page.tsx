@@ -1,4 +1,6 @@
-﻿import { prisma } from "@/lib/prisma";
+﻿// app/admin/books/page.tsx
+
+import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
 
@@ -12,14 +14,17 @@ export default async function BooksAdminPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Books</h1>
-      <p className="text-xs text-slate-400">
-        Read-only view. Admin CRUD for books can be added later.
-      </p>
+      <header className="space-y-1">
+        <h1 className="text-xl font-semibold text-slate-50">Books</h1>
+        <p className="text-[10px] text-slate-400">
+          Internal registry of Ops Protocol resources. Future: manage slugs and
+          links from here.
+        </p>
+      </header>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/40">
-        <table className="min-w-full text-xs">
-          <thead className="bg-slate-900/80 text-slate-400">
+      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/70 text-[10px]">
+        <table className="min-w-full">
+          <thead className="bg-slate-900/90 text-slate-400">
             <tr>
               <th className="px-3 py-2 text-left">ID</th>
               <th className="px-3 py-2 text-left">Title</th>
@@ -33,10 +38,10 @@ export default async function BooksAdminPage() {
                 key={book.id}
                 className="border-t border-slate-800/80 hover:bg-slate-900/70"
               >
-                <td className="px-3 py-2">{book.id}</td>
-                <td className="px-3 py-2">{book.title}</td>
-                <td className="px-3 py-2">{book.slug}</td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 text-slate-400">{book.id}</td>
+                <td className="px-3 py-2 text-slate-100">{book.title}</td>
+                <td className="px-3 py-2 text-slate-300">{book.slug}</td>
+                <td className="px-3 py-2 text-slate-400">
                   {book.createdAt.toISOString().slice(0, 10)}
                 </td>
               </tr>
@@ -47,7 +52,7 @@ export default async function BooksAdminPage() {
                   colSpan={4}
                   className="px-3 py-4 text-center text-slate-500"
                 >
-                  No books defined.
+                  No books defined yet.
                 </td>
               </tr>
             )}
