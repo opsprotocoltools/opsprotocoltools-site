@@ -15,32 +15,31 @@ type AnalyticsRow = {
 };
 
 export default async function AdminAnalyticsPage() {
-  // Only admins allowed
+  // Gate: only admins
   await requireAdmin();
 
-  // During Vercel build or missing DB config:
-  // Do NOT touch Prisma. Just render a safe message.
+  // Do NOT touch Prisma during Vercel build or if DB is missing.
   if (isBuildPhase || !process.env.DATABASE_URL) {
     return (
       <div className="p-6">
         <h1 className="text-2xl font-semibold mb-4">Analytics Events</h1>
         <p className="text-gray-600">
-          Analytics data is loaded at runtime. Skipping database access during
+          Analytics data loads at runtime. Skipping database access during
           build.
         </p>
       </div>
     );
   }
 
-  // At real runtime we can safely load Prisma.
+  // Lazy-load Prisma only at runtime
   const { default: prisma } = await import("@/lib/prisma");
 
   let events: AnalyticsRow[] = [];
 
   try {
-    // Ops spec requirement:
-    // - Use prisma.analyticsEvent
-    // - Include user relation for events
+    // Required by your spec:
+    // - use prisma.analyticsEvent
+    // - include user relation
     const rows = await prisma.analyticsEvent.findMany({
       include: { user: true },
       orderBy: { createdAt: "desc" },
