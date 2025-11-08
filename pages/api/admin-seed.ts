@@ -1,15 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Pool } from "pg";
+import bcrypt from "bcryptjs";
 
-// Use Vercel DATABASE_URL directly
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
-
-// Bcrypt hash for password: 8y6jK321!@#!
-const ADMIN_HASH =
-  "$2b$10$kEfW1EnuSZWJS2P/Rsgrlu6Cn0APZ6EvpRlOKQutety2akMbzdBp.";
 
 export default async function handler(
   req: NextApiRequest,
@@ -28,8 +24,11 @@ export default async function handler(
   }
 
   const email = "opsprotocoltools@gmail.com";
+  const password = "8y6jK321!@#!";
 
   try {
+    const passwordHash = await bcrypt.hash(password, 10);
+
     const client = await pool.connect();
     try {
       const result = await client.query(
@@ -42,8 +41,8 @@ export default async function handler(
           role = 'ADMIN',
           "updatedAt" = NOW()
         RETURNING id, email, role;
-      `,
-        [email, ADMIN_HASH]
+        `,
+        [email, passwordHash]
       );
 
       res.status(200).json({
@@ -55,9 +54,8 @@ export default async function handler(
       client.release();
     }
   } catch (err: any) {
-    res.status(500).json({
-      ok: false,
-      error: err?.message || String(err),
-    });
+    res
+      .status(500)
+      .json({ ok: false, error: err?.message || String(err) });
   }
 }
