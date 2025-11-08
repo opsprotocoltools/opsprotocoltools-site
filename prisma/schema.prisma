@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,99 +8,18 @@ datasource db {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  email        String    @unique
-  name         String?
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
   passwordHash String
-  role         Role      @default(USER)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  accounts  Account[]
-  sessions  Session[]
-  events    AnalyticsEvent[]
-}
-
-enum Role {
-  USER
-  ADMIN
-}
-
-model Book {
-  id        Int      @id @default(autoincrement())
-  title     String
-  slug      String   @unique
-  summary   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Tool {
-  id          Int      @id @default(autoincrement())
-  name        String
-  slug        String   @unique
-  url         String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model AnalyticsEvent {
-  id        Int      @id @default(autoincrement())
-  type      String
-  metadata  Json?
-  userId    Int?
-  createdAt DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id])
+  name         String?
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
 }
 
 model KnowledgeChunk {
   id        Int      @id @default(autoincrement())
   domain    String
   source    String
-  tags      String   // comma-separated tags
-  priority  Int
   content   String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  @@unique([domain, source], name: "domain_source")
-}
-
-/// NextAuth models (standard)
-
-model Account {
-  id                Int       @id @default(autoincrement())
-  userId            Int
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           Int      @id @default(autoincrement())
-  sessionToken String   @unique
-  userId       Int
-  expires      DateTime
-
-  user User @relation(fields: [userId], references: [id])
-}
-
-model VerificationToken {
-  identifier String
-  token      String
-  expires    DateTime
-
-  @@unique([identifier, token])
 }

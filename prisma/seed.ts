@@ -1,5 +1,3 @@
-// prisma/seed.ts
-
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -11,13 +9,13 @@ async function main() {
   const passwordHash = await bcrypt.hash("Admin123!", 10);
 
   await prisma.user.upsert({
-    where: { email: "opsprotocoltools@gmail.com" },
-    update: { passwordHash, role: "ADMIN" },
+    where: { email: "admin@opsprotocoltools.com" },
+    update: {},
     create: {
-      email: "opsprotocoltools@gmail.com",
-      name: "Ops Protocol Admin",
+      email: "admin@opsprotocoltools.com",
       passwordHash,
-      role: "ADMIN",
+      name: "Admin",
+      role: "admin",
     },
   });
 
@@ -26,7 +24,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error("Seed error:", e);
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {
