@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +22,16 @@ export async function GET() {
       return NextResponse.json({ ok: true, events: [] as ApiEvent[] });
     }
 
+    // Lazy-load Prisma only at runtime, not during build import
+    const { default: prisma } = await import("@/lib/prisma");
+
     const events = await prisma.analyticsEvent.findMany({
       include: { user: true },
       orderBy: { createdAt: "desc" },
       take: 50,
     });
 
-    const payload: ApiEvent[] = events.map((e) => ({
+    const payload: ApiEvent[] = events.map((e: any) => ({
       id: e.id,
       event: e.event || "unknown",
       userEmail: e.user?.email ?? null,
@@ -38,7 +40,7 @@ export async function GET() {
     }));
 
     return NextResponse.json({ ok: true, events: payload });
-  } catch {
+  } catch (err) {
     // Do not kill the app on error
     return NextResponse.json(
       { ok: false, error: "ANALYTICS_QUERY_FAILED" },
