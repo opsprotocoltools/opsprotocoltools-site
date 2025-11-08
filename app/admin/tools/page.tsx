@@ -1,51 +1,83 @@
-import React from "react";
 import { requireAdmin } from "@/lib/auth";
+import { Pool } from "pg";
 
 export const dynamic = "force-dynamic";
 
-async function getToolsSafe() {
-  try {
-    const { default: prisma } = await import("@/lib/prisma");
-    const tools = await prisma.tool.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-    return tools;
-  } catch {
-    return [];
-  }
-}
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
 export default async function AdminToolsPage() {
   await requireAdmin();
-  const tools = await getToolsSafe();
+
+  if (!process.env.DATABASE_URL) {
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-semibold mb-4">Tools</h1>
+        <p className="text-red-600">DATABASE_URL is not configured.</p>
+      </div>
+    );
+  }
+
+  let tools: {
+    id: number;
+    name: string;
+    slug: string;
+    url: string;
+    description: string | null;
+    createdAt: string;
+  }[] = [];
+
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT id, name, slug, url, description, "createdAt"
+       FROM "Tool"
+       ORDER BY "createdAt" DESC
+       LIMIT 100;`
+    );
+    tools = result.rows;
+  } catch {
+    tools = [];
+  } finally {
+    client.release();
+  }
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-semibold mb-4">Tools</h1>
-
       {tools.length === 0 ? (
-        <p className="text-gray-500">
-          No tools found or database not available.
+        <p className="text-gray-600">
+          No tools found or database query failed.
         </p>
       ) : (
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b">
-              <th className="py-2 px-3">ID</th>
-              <th className="py-2 px-3">Name</th>
-              <th className="py-2 px-3">Slug</th>
-              <th className="py-2 px-3">URL</th>
-              <th className="py-2 px-3">Created</th>
+        <table className="min-w-full border border-gray-200 text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="border px-3 py-2 text-left">ID</th>
+              <th className="border px-3 py-2 text-left">Name</th>
+              <th className="border px-3 py-2 text-left">Slug</th>
+              <th className="border px-3 py-2 text-left">URL</th>
+              <th className="border px-3 py-2 text-left">Created</th>
             </tr>
           </thead>
           <tbody>
-            {tools.map((t: any) => (
-              <tr key={t.id} className="border-b">
-                <td className="py-2 px-3">{t.id}</td>
-                <td className="py-2 px-3">{t.name}</td>
-                <td className="py-2 px-3">{t.slug}</td>
-                <td className="py-2 px-3">{t.url}</td>
-                <td className="py-2 px-3">
+            {tools.map((t) => (
+              <tr key={t.id} className="border-t">
+                <td className="border px-3 py-2">{t.id}</td>
+                <td className="border px-3 py-2">{t.name}</td>
+                <td className="border px-3 py-2">{t.slug}</td>
+                <td className="border px-3 py-2">
+                  <a
+                    href={t.url}
+                    className="text-blue-600 underline"
+                    target="_blank"
+                  >
+                    {t.url}
+                  </a>
+                </td>
+                <td className="border px-3 py-2">
                   {new Date(t.createdAt).toLocaleString()}
                 </td>
               </tr>

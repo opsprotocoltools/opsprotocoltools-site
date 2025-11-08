@@ -13,50 +13,38 @@ enum Role {
 }
 
 model User {
-  id              Int              @id @default(autoincrement())
-  email           String           @unique
-  passwordHash    String
-  name            String?
-  role            Role             @default(USER)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  analyticsEvents AnalyticsEvent[]
+  id               Int               @id @default(autoincrement())
+  email            String            @unique
+  passwordHash     String
+  role             Role              @default(USER)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  analyticsEvents  AnalyticsEvent[]
 }
 
 model AnalyticsEvent {
-  id        Int      @id @default(autoincrement())
-  event     String?
-  userId    Int?
-  user      User?    @relation(fields: [userId], references: [id])
-  metadata  Json?
-  createdAt DateTime @default(now())
+  id         Int       @id @default(autoincrement())
+  event      String?
+  userId     Int?
+  user       User?     @relation(fields: [userId], references: [id])
+  metadata   Json?
+  createdAt  DateTime  @default(now())
 }
 
 model Book {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   title       String
-  slug        String   @unique
+  slug        String    @unique
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Tool {
-  id          Int      @id @default(autoincrement())
-  name        String
-  slug        String   @unique
-  url         String
+  id          Int       @id @default(autoincrement())
+  title       String
+  slug        String    @unique
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model KnowledgeChunk {
-  id        Int      @id @default(autoincrement())
-  domain    String
-  source    String
-  priority  Int      @default(0)
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

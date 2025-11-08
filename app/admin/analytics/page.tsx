@@ -1,60 +1,62 @@
-﻿import React from "react";
-import { requireAdmin } from "@/lib/auth";
+﻿import { requireAdmin } from "@/lib/auth";
+import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-async function getAnalyticsSafe() {
+export default async function AdminAnalyticsPage() {
+  await requireAdmin();
+
+  let events:
+    {
+      id: number;
+      event: string | null;
+      createdAt: Date;
+      userId: number | null;
+      user: { email: string | null } | null;
+    }[] = [];
+
   try {
-    const { default: prisma } = await import("@/lib/prisma");
-    const events = await prisma.analyticsEvent.findMany({
+    events = await prisma.analyticsEvent.findMany({
       include: { user: true },
       orderBy: { createdAt: "desc" },
       take: 50,
     });
-    return events;
   } catch {
-    return [];
+    events = [];
   }
-}
-
-export default async function AdminAnalyticsPage() {
-  await requireAdmin();
-  const analytics = await getAnalyticsSafe();
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-semibold mb-4">Analytics Events</h1>
 
-      {analytics.length === 0 ? (
-        <p className="text-gray-500">
-          No analytics events found or database not available.
+      {events.length === 0 ? (
+        <p className="text-gray-600">
+          No analytics events found or database query failed.
         </p>
       ) : (
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b">
-              <th className="py-2 px-3">ID</th>
-              <th className="py-2 px-3">Event</th>
-              <th className="py-2 px-3">User Email</th>
-              <th className="py-2 px-3">User ID</th>
-              <th className="py-2 px-3">Created At</th>
+        <table className="min-w-full border border-gray-200 text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="border px-3 py-2 text-left">ID</th>
+              <th className="border px-3 py-2 text-left">Event</th>
+              <th className="border px-3 py-2 text-left">User Email</th>
+              <th className="border px-3 py-2 text-left">User ID</th>
+              <th className="border px-3 py-2 text-left">Created At</th>
             </tr>
           </thead>
           <tbody>
-            {analytics.map((a: any) => (
-              <tr key={a.id} className="border-b">
-                <td className="py-2 px-3">{a.id}</td>
-                <td className="py-2 px-3">{a.event || "unknown"}</td>
-                <td className="py-2 px-3">
-                  {a.user?.email ? a.user.email : "—"}
+            {events.map((e) => (
+              <tr key={e.id} className="border-t">
+                <td className="border px-3 py-2">{e.id}</td>
+                <td className="border px-3 py-2">{e.event || "unknown"}</td>
+                <td className="border px-3 py-2">
+                  {e.user?.email || "—"}
                 </td>
-                <td className="py-2 px-3">
-                  {a.userId !== null && a.userId !== undefined
-                    ? a.userId
-                    : "—"}
+                <td className="border px-3 py-2">
+                  {e.userId ?? "—"}
                 </td>
-                <td className="py-2 px-3">
-                  {new Date(a.createdAt).toLocaleString()}
+                <td className="border px-3 py-2">
+                  {new Date(e.createdAt).toLocaleString()}
                 </td>
               </tr>
             ))}
