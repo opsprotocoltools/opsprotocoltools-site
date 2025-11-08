@@ -1,26 +1,24 @@
 ﻿import React from "react";
+import { requireAdmin } from "@/lib/auth";
 
-// Build-safe loader for analytics with related user
+export const dynamic = "force-dynamic";
+
 async function getAnalyticsSafe() {
   try {
     const { default: prisma } = await import("@/lib/prisma");
-
     const events = await prisma.analyticsEvent.findMany({
-      include: {
-        user: true, // required by spec: include user relation
-      },
+      include: { user: true },
       orderBy: { createdAt: "desc" },
       take: 50,
     });
-
     return events;
   } catch {
-    // During build or if DB is unavailable, return empty list
     return [];
   }
 }
 
 export default async function AdminAnalyticsPage() {
+  await requireAdmin();
   const analytics = await getAnalyticsSafe();
 
   return (

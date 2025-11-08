@@ -1,80 +1,77 @@
-import type { NextAuthOptions } from "next-auth";
-import { getServerSession } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from "bcryptjs";
-import prisma from "@/lib/prisma";
+import { NextAuthOptions, getServerSession } from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
+
+// Lazy-load Prisma so that builds never fail if DB is unavailable.
+async function getPrismaSafe() {
+  try {
+    const { default: prisma } = await import("@/lib/prisma");
+    return prisma;
+  } catch {
+    return null;
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    CredentialsProvider({
+    Credentials({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        email: { label: "Email", type: "text" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials.password) {
+        const prisma = await getPrismaSafe();
+        if (!prisma || !process.env.DATABASE_URL) {
+          // During build or if DB missing: do not crash, just deny.
           return null;
         }
+
+        const email = credentials?.email || "";
+        const password = credentials?.password || "";
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
+          where: { email },
         });
 
-        if (!user || !user.passwordHash) {
-          return null;
-        }
+        if (!user) return null;
 
-        const isValid = await compare(credentials.password, user.passwordHash);
-        if (!isValid) {
-          return null;
-        }
+        const ok = await bcrypt.compare(password, user.passwordHash);
+        if (!ok) return null;
 
+        // Expose id and role so we can use them later
         return {
           id: String(user.id),
           email: user.email,
-          name: user.name ?? "User",
-          role: user.role
-        } as any;
-      }
-    })
+          name: user.name ?? "",
+          role: user.role,
+        };
+      },
+    }),
   ],
   session: {
-    strategy: "jwt"
+    strategy: "jwt",
   },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = (user as any).id;
-        token.role = (user as any).role;
+        const u = user as any;
+        token.id = u.id;
+        token.role = u.role;
       }
       return token;
     },
     async session({ session, token }) {
-      if (!session.user) {
-        session.user = {} as any;
-      }
-      if (token?.id) {
+      if (session.user && token) {
         (session.user as any).id = token.id;
-      }
-      if (token?.role) {
         (session.user as any).role = token.role;
       }
       return session;
-    }
+    },
   },
-  pages: {
-    signIn: "/login"
-  },
-  secret: process.env.NEXTAUTH_SECRET
 };
 
-/**
- * requireAdmin
- *
- * Used in server components / admin routes.
- * Throws if there is no session or role !== ADMIN.
- */
+// Used by admin pages to protect routes
 export async function requireAdmin() {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
@@ -83,5 +80,5 @@ export async function requireAdmin() {
     throw new Error("Not authorized");
   }
 
-  return session;
+  return session.user;
 }
