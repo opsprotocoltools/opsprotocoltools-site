@@ -13,24 +13,23 @@ enum Role {
 }
 
 model User {
-  id              Int             @id @default(autoincrement())
-  email           String          @unique
-  passwordHash    String?
+  id              Int              @id @default(autoincrement())
+  email           String           @unique
+  passwordHash    String
   name            String?
-  role            Role            @default(USER)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  role            Role             @default(USER)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   analyticsEvents AnalyticsEvent[]
 }
 
-model Tool {
-  id          Int      @id @default(autoincrement())
-  name        String
-  slug        String   @unique
-  url         String?
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model AnalyticsEvent {
+  id        Int      @id @default(autoincrement())
+  event     String?
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  metadata  Json?
+  createdAt DateTime @default(now())
 }
 
 model Book {
@@ -42,26 +41,22 @@ model Book {
   updatedAt   DateTime @updatedAt
 }
 
+model Tool {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  url         String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model KnowledgeChunk {
   id        Int      @id @default(autoincrement())
   domain    String
   source    String
-  priority  Int      @default(1)
-  tags      String
+  priority  Int      @default(0)
   content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([domain])
-  @@index([priority])
-  @@unique([domain, source, priority, content], name: "domain_source_priority_content")
-}
-
-model AnalyticsEvent {
-  id        Int      @id @default(autoincrement())
-  event     String?
-  userId    Int?
-  user      User?    @relation(fields: [userId], references: [id])
-  metadata  Json?
-  createdAt DateTime @default(now())
 }

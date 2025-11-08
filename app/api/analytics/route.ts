@@ -7,20 +7,19 @@ type AnalyticsBody = {
   metadata?: Record<string, any> | null;
 };
 
-// Treat Vercel production build as "no-op analytics" to avoid failing builds
+// TRUE only when Vercel is BUILDING the app, not when users are visiting it.
 const isBuildPhase =
   !!process.env.VERCEL &&
-  (process.env.NEXT_PHASE === "phase-production-build" ||
-    process.env.NODE_ENV === "production");
+  process.env.NEXT_PHASE === "phase-production-build";
 
 /**
  * POST /api/analytics
- * Used by the app to log analytics events.
- * Must NEVER break builds or the app if the DB is unavailable.
+ * Logs analytics events into the database.
+ * Must NEVER break build, and must NEVER crash the site.
  */
 export async function POST(req: Request) {
   try {
-    // During build or if DATABASE_URL is not set, skip writing to DB.
+    // If we are building, or no database URL is set, say "ok" and do nothing.
     if (isBuildPhase || !process.env.DATABASE_URL) {
       return NextResponse.json({ ok: true, skipped: true });
     }
@@ -45,14 +44,14 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch {
-    // Swallow errors: analytics must not crash anything
+    // If something goes wrong, do NOT crash the app.
     return NextResponse.json({ ok: false });
   }
 }
 
 /**
  * GET /api/analytics
- * Simple health check / noop.
+ * Simple "hello, I am alive" so Next.js/Vercel are happy.
  */
 export async function GET() {
   return NextResponse.json({ ok: true });
