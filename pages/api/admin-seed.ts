@@ -10,10 +10,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const email = "opsprotocoltools@gmail.com";
-    const password = "8y6jK3211@!";
+    const password = "8y6jK321!@#!";
     const passwordHash = await bcrypt.hash(password, 10);
 
-    await prisma.user.upsert({
+    const user = await prisma.user.upsert({
       where: { email },
       update: {},
       create: {
@@ -24,8 +24,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
 
-    res.status(200).json({ ok: true, message: "Admin user created." });
+    res.status(200).json({ ok: true, message: "Admin user ensured", id: user.id });
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    res
+      .status(500)
+      .json({ ok: false, error: (err as Error).message ?? "unknown error" });
   }
 }
