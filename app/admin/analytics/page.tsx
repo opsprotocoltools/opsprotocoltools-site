@@ -2,6 +2,7 @@
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;      // disable ISR completely
 
 export default async function AdminAnalyticsPage() {
   await requireAdmin();
