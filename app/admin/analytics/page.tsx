@@ -1,54 +1,60 @@
 ﻿import { requireAdmin } from "@/lib/auth";
-import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// Detect Vercel build so we do not hit Prisma during static generation
 const isBuildPhase =
   !!process.env.VERCEL &&
   process.env.NEXT_PHASE === "phase-production-build";
 
 type AnalyticsRow = {
   id: number;
-  event: string | null;
-  createdAt: Date;
+  event: string;
+  createdAt: string;
   userId: number | null;
-  user: {
-    email: string | null;
-  } | null;
+  userEmail: string | null;
 };
 
 export default async function AdminAnalyticsPage() {
+  // Only admins allowed
   await requireAdmin();
 
-  // During build or if DB missing, render a safe placeholder.
+  // During Vercel build or missing DB config:
+  // Do NOT touch Prisma. Just render a safe message.
   if (isBuildPhase || !process.env.DATABASE_URL) {
     return (
       <div className="p-6">
         <h1 className="text-2xl font-semibold mb-4">Analytics Events</h1>
         <p className="text-gray-600">
-          Analytics data is available at runtime. No database access during
+          Analytics data is loaded at runtime. Skipping database access during
           build.
         </p>
       </div>
     );
   }
 
+  // At real runtime we can safely load Prisma.
+  const { default: prisma } = await import("@/lib/prisma");
+
   let events: AnalyticsRow[] = [];
 
   try {
-    // Required by ops spec:
-    // - use prisma.analyticsEvent
-    // - include user relation
+    // Ops spec requirement:
+    // - Use prisma.analyticsEvent
+    // - Include user relation for events
     const rows = await prisma.analyticsEvent.findMany({
       include: { user: true },
       orderBy: { createdAt: "desc" },
       take: 50,
     });
 
-    events = rows as AnalyticsRow[];
+    events = rows.map((e) => ({
+      id: e.id,
+      event: e.event || "unknown",
+      createdAt: e.createdAt.toISOString(),
+      userId: e.userId ?? null,
+      userEmail: e.user?.email ?? null,
+    }));
   } catch (error) {
-    // On runtime failure, show a non-fatal message
     console.error("Failed to load analytics events:", error);
     events = [];
   }
@@ -76,14 +82,12 @@ export default async function AdminAnalyticsPage() {
             {events.map((e) => (
               <tr key={e.id} className="border-t">
                 <td className="border px-3 py-2">{e.id}</td>
+                <td className="border px-3 py-2">{e.event}</td>
                 <td className="border px-3 py-2">
-                  {e.event || "unknown"}
+                  {e.userEmail || "—"}
                 </td>
                 <td className="border px-3 py-2">
-                  {e.user?.email || "—"}
-                </td>
-                <td className="border px-3 py-2">
-                  {e.userId ?? "—"}
+                  {e.userId !== null ? e.userId : "—"}
                 </td>
                 <td className="border px-3 py-2">
                   {new Date(e.createdAt).toLocaleString()}
