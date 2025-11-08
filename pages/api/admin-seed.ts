@@ -7,9 +7,9 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-// Precomputed bcrypt hash for: 8y6jK3211@!
+// Bcrypt hash for password: 8y6jK321!@#!
 const ADMIN_HASH =
-  "$2a$10$yi2EqEJc1qzCxx9/YvTxROjHoQeAW60C57Tdq9yAKeuh2LAVoBWU6";
+  "$2b$10$kEfW1EnuSZWJS2P/Rsgrlu6Cn0APZ6EvpRlOKQutety2akMbzdBp.";
 
 export default async function handler(
   req: NextApiRequest,
@@ -37,7 +37,10 @@ export default async function handler(
         INSERT INTO "User" (email, "passwordHash", name, role, "createdAt", "updatedAt")
         VALUES ($1, $2, 'Admin', 'ADMIN', NOW(), NOW())
         ON CONFLICT (email)
-        DO UPDATE SET role = 'ADMIN'
+        DO UPDATE SET
+          "passwordHash" = EXCLUDED."passwordHash",
+          role = 'ADMIN',
+          "updatedAt" = NOW()
         RETURNING id, email, role;
       `,
         [email, ADMIN_HASH]
