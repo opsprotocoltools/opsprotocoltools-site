@@ -1,14 +1,27 @@
 import { NextAuthOptions, getServerSession } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { Pool } from "pg";
 
-// Lazy-load Prisma so that builds never fail if DB is unavailable.
-async function getPrismaSafe() {
+// Single shared Postgres pool using DATABASE_URL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
+
+async function findUserByEmail(email: string) {
+  if (!process.env.DATABASE_URL) return null;
+
+  const client = await pool.connect();
   try {
-    const { default: prisma } = await import("@/lib/prisma");
-    return prisma;
-  } catch {
-    return null;
+    const result = await client.query(
+      `SELECT id, email, "passwordHash", role, name FROM "User" WHERE email = $1 LIMIT 1`,
+      [email]
+    );
+    if (result.rowCount === 0) return null;
+    return result.rows[0];
+  } finally {
+    client.release();
   }
 }
 
@@ -21,25 +34,17 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const prisma = await getPrismaSafe();
-        if (!prisma || !process.env.DATABASE_URL) {
-          // During build or if DB missing: do not crash, just deny.
-          return null;
-        }
-
         const email = credentials?.email || "";
         const password = credentials?.password || "";
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-        });
+        if (!email || !password) return null;
 
+        const user = await findUserByEmail(email);
         if (!user) return null;
 
-        const ok = await bcrypt.compare(password, user.passwordHash);
-        if (!ok) return null;
+        const match = await bcrypt.compare(password, user.passwordhash || user.passwordHash);
+        if (!match) return null;
 
-        // Expose id and role so we can use them later
         return {
           id: String(user.id),
           email: user.email,
@@ -71,7 +76,6 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-// Used by admin pages to protect routes
 export async function requireAdmin() {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
