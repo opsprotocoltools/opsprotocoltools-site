@@ -1,18 +1,35 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import prisma from "@/lib/prisma";
+import { Pool } from "pg";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    const users = await prisma.user.findMany({
-      select: { id: true, email: true, role: true },
-      orderBy: { id: "asc" },
-      take: 20,
-    });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
-    res.status(200).json({ ok: true, users });
-  } catch (err) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (!process.env.DATABASE_URL) {
     res
       .status(500)
-      .json({ ok: false, error: (err as Error).message ?? "unknown error" });
+      .json({ ok: false, error: "DATABASE_URL not set in environment" });
+    return;
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT id, email, role FROM "User" ORDER BY id ASC LIMIT 20;`
+      );
+      res.status(200).json({ ok: true, users: result.rows });
+    } finally {
+      client.release();
+    }
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ ok: false, error: err?.message || String(err) });
   }
 }
