@@ -1,0 +1,86 @@
+{
+  "projectName": "Ops Protocol Tools",
+  "description": "Next.js 14 + Prisma + NextAuth + PostgreSQL stack for Ops Protocol marketing site, admin, and deterministic Ops Coach.",
+  "stack": {
+    "framework": "Next.js 14 (App Router, TypeScript)",
+    "auth": "NextAuth (Credentials, JWT)",
+    "orm": "Prisma",
+    "db": "PostgreSQL",
+    "styling": "Tailwind CSS",
+    "charts": "Recharts",
+    "hosting": "Vercel"
+  },
+  "env": {
+    "required": [
+      "DATABASE_URL",
+      "NEXTAUTH_URL",
+      "NEXTAUTH_SECRET"
+    ],
+    "optional": [
+      "OPENAI_API_KEY"
+    ],
+    "notes": [
+      "DATABASE_URL must be a valid Postgres connection string (postgres:// or postgresql://).",
+      "NEXTAUTH_URL should point to the deployed URL or http://localhost:3000 in dev.",
+      "Secrets are never committed; they live only in .env / Vercel env."
+    ]
+  },
+  "criticalFiles": [
+    "package.json",
+    "prisma/schema.prisma",
+    "prisma/seed.ts",
+    "prisma/seedKnowledge.ts",
+    "lib/prisma.ts",
+    "lib/auth.ts",
+    "app/admin/analytics/page.tsx"
+  ],
+  "rules": {
+    "editing": [
+      "Critical files are only edited as full-file replacements.",
+      "No partial inline patches on critical files.",
+      "Stack and schema changes must be reflected in this spec via a single commit.",
+      "Assistants must prefer deterministic, minimal changes aligned to this spec."
+    ],
+    "assistant": [
+      "Always read ops/CHAT_BOOTSTRAP.md (generated) before touching any file.",
+      "Never output snippets for critical files; output full contents.",
+      "Treat this repo as the single source; do not invent migrations or models."
+    ]
+  },
+  "schema": {
+    "roleEnum": [
+      "ADMIN",
+      "USER"
+    ],
+    "models": {
+      "User": {
+        "role": "Role",
+        "relations": [
+          "analyticsEvents: AnalyticsEvent[]"
+        ]
+      },
+      "KnowledgeChunk": {
+        "fields": [
+          "domain",
+          "source",
+          "priority",
+          "tags",
+          "content",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "AnalyticsEvent": {
+        "fields": [
+          "event",
+          "userId",
+          "metadata",
+          "createdAt"
+        ],
+        "relations": [
+          "user: User?"
+        ]
+      }
+    }
+  }
+}

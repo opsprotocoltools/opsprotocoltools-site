@@ -1,12 +1,8 @@
-﻿// app/admin/analytics/page.tsx
+﻿import { requireAdmin } from "@/lib/auth";
+import prisma from "@/lib/prisma";
 
-import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
-import { logEvent } from "@/lib/analytics";
-
-export default async function AnalyticsAdminPage() {
-  const admin = await requireAdmin();
-  await logEvent("admin.view_analytics", { userId: admin.id });
+export default async function AnalyticsPage() {
+  await requireAdmin();
 
   const events = await prisma.analyticsEvent.findMany({
     orderBy: { createdAt: "desc" },
@@ -22,56 +18,47 @@ export default async function AnalyticsAdminPage() {
   });
 
   return (
-    <div className="space-y-4">
-      <header className="space-y-1">
-        <h1 className="text-xl font-semibold text-slate-50">Analytics</h1>
-        <p className="text-[10px] text-slate-400">
-          Recent operational events. Used for debugging behavior and verifying
-          flows. No personal content is required or shown.
-        </p>
-      </header>
-
-      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/70 text-[10px]">
-        <table className="min-w-full">
-          <thead className="bg-slate-900/90 text-slate-400">
+    <div className="min-h-screen px-6 py-8">
+      <h1 className="text-2xl font-semibold mb-4">Analytics</h1>
+      <p className="text-sm text-zinc-400 mb-6">
+        Recent tracked events. Minimal operational telemetry only.
+      </p>
+      <div className="overflow-x-auto rounded-lg border border-zinc-800">
+        <table className="min-w-full text-sm">
+          <thead className="bg-zinc-900">
             <tr>
-              <th className="px-3 py-2 text-left">Time</th>
-              <th className="px-3 py-2 text-left">Type</th>
-              <th className="px-3 py-2 text-left">User</th>
-              <th className="px-3 py-2 text-left">Metadata</th>
+              <th className="px-3 py-2 text-left font-medium text-zinc-400">
+                Time
+              </th>
+              <th className="px-3 py-2 text-left font-medium text-zinc-400">
+                Event
+              </th>
+              <th className="px-3 py-2 text-left font-medium text-zinc-400">
+                User
+              </th>
             </tr>
           </thead>
           <tbody>
-            {events.map((event) => (
-              <tr
-                key={event.id}
-                className="border-t border-slate-800/80 hover:bg-slate-900/70"
-              >
-                <td className="px-3 py-2 text-slate-400">
-                  {event.createdAt.toISOString()}
+            {events.map((e) => (
+              <tr key={e.id} className="border-t border-zinc-800">
+                <td className="px-3 py-2 text-zinc-300">
+                  {new Date(e.createdAt).toLocaleString()}
                 </td>
-                <td className="px-3 py-2 text-cyan-300">
-                  {event.type}
+                <td className="px-3 py-2 text-zinc-200">
+                  {e.event}
                 </td>
-                <td className="px-3 py-2 text-slate-300">
-                  {event.user
-                    ? `${event.user.email} (ID ${event.user.id})`
-                    : "—"}
-                </td>
-                <td className="px-3 py-2 text-slate-400">
-                  {event.metadata
-                    ? JSON.stringify(event.metadata)
-                    : "—"}
+                <td className="px-3 py-2 text-zinc-400">
+                  {e.user?.email ?? "—"}
                 </td>
               </tr>
             ))}
             {events.length === 0 && (
               <tr>
                 <td
-                  colSpan={4}
-                  className="px-3 py-4 text-center text-slate-500"
+                  colSpan={3}
+                  className="px-3 py-4 text-center text-zinc-500"
                 >
-                  No analytics events logged yet.
+                  No analytics events recorded yet.
                 </td>
               </tr>
             )}

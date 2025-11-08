@@ -1,64 +1,54 @@
-// actions/adminActions.ts
-
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
-import { logEvent } from "@/lib/analytics";
+import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { Role } from "@prisma/client";
 
-export async function toggleUserRole(formData: FormData) {
-  const admin = await requireAdmin();
+/**
+ * Update a user's role.
+ * Prevents an admin from demoting their own account.
+ */
+export async function updateUserRole(id: number, role: Role) {
+  const session = await getServerSession(authOptions);
+  const adminUser = (session?.user as any) || {};
 
-  const id = Number(formData.get("userId"));
-  if (!id || Number.isNaN(id)) return;
+  if (!adminUser?.id) {
+    throw new Error("Unauthorized");
+  }
 
   // Prevent self-demotion
-  if (id === admin.id) {
+  if (Number(id) === Number(adminUser.id)) {
     throw new Error("Cannot modify your own admin role");
   }
 
-  const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) return;
-
-  const newRole = user.role === "ADMIN" ? "USER" : "ADMIN";
-
-  await prisma.user.update({
+  const updatedUser = await prisma.user.update({
     where: { id },
-    data: { role: newRole },
+    data: { role }
   });
 
-  await logEvent("admin.toggle_role", {
-    userId: admin.id,
-    metadata: {
-      targetUserId: id,
-      fromRole: user.role,
-      toRole: newRole,
-    },
-  });
-
-  revalidatePath("/admin/users");
+  return updatedUser;
 }
 
-export async function deleteUser(formData: FormData) {
-  const admin = await requireAdmin();
+/**
+ * Delete a user.
+ * Prevents deleting yourself.
+ */
+export async function deleteUser(id: number) {
+  const session = await getServerSession(authOptions);
+  const adminUser = (session?.user as any) || {};
 
-  const id = Number(formData.get("userId"));
-  if (!id || Number.isNaN(id)) return;
+  if (!adminUser?.id) {
+    throw new Error("Unauthorized");
+  }
 
-  // Prevent deleting yourself
-  if (id === admin.id) {
+  if (Number(id) === Number(adminUser.id)) {
     throw new Error("Cannot delete your own account");
   }
 
   await prisma.user.delete({
-    where: { id },
+    where: { id }
   });
 
-  await logEvent("admin.delete_user", {
-    userId: admin.id,
-    metadata: { targetUserId: id },
-  });
-
-  revalidatePath("/admin/users");
+  return { success: true };
 }

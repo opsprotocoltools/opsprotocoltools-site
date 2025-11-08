@@ -1,117 +1,87 @@
-// lib/auth.ts
-
-import { type NextAuthOptions, getServerSession } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
+import { getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { prisma } from "@/lib/prisma";
 import { compare } from "bcryptjs";
-import { logEvent } from "@/lib/analytics";
-import {
-  signIn as nextAuthSignIn,
-  signOut as nextAuthSignOut,
-} from "next-auth/react";
+import prisma from "@/lib/prisma";
 
-// NextAuth options (v4 style)
 export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: "jwt",
-  },
   providers: [
     CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Missing credentials");
+        if (!credentials?.email || !credentials.password) {
+          return null;
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email }
         });
 
         if (!user || !user.passwordHash) {
-          await logEvent("auth.login_failed", {
-            metadata: {
-              reason: "user_not_found",
-              email: credentials.email,
-            },
-          });
           return null;
         }
 
-        const isValid = await compare(
-          credentials.password,
-          user.passwordHash
-        );
-
+        const isValid = await compare(credentials.password, user.passwordHash);
         if (!isValid) {
-          await logEvent("auth.login_failed", {
-            userId: user.id,
-            metadata: { reason: "bad_password" },
-          });
           return null;
         }
 
-        await logEvent("auth.login_success", { userId: user.id });
-
-        // Object returned here becomes `user` in JWT callback
         return {
-          id: user.id.toString(),
-          name: user.name,
+          id: String(user.id),
           email: user.email,
-          role: user.role,
+          name: user.name ?? "User",
+          role: user.role
         } as any;
-      },
-    }),
+      }
+    })
   ],
+  session: {
+    strategy: "jwt"
+  },
   callbacks: {
     async jwt({ token, user }) {
-      // On login, copy role from user into token
       if (user) {
-        token.role = (user as any).role ?? "USER";
+        token.id = (user as any).id;
+        token.role = (user as any).role;
       }
       return token;
     },
     async session({ session, token }) {
-      // Expose id + role on session.user
-      if (session.user) {
-        (session.user as any).id = token.sub;
-        (session.user as any).role = token.role ?? "USER";
+      if (!session.user) {
+        session.user = {} as any;
+      }
+      if (token?.id) {
+        (session.user as any).id = token.id;
+      }
+      if (token?.role) {
+        (session.user as any).role = token.role;
       }
       return session;
-    },
+    }
   },
   pages: {
-    signIn: "/login",
+    signIn: "/login"
   },
+  secret: process.env.NEXTAUTH_SECRET
 };
 
-// Helper to get the current session on the server
-export async function auth() {
-  return getServerSession(authOptions);
-}
-
-// Require ADMIN role on the server
+/**
+ * requireAdmin
+ *
+ * Used in server components / admin routes.
+ * Throws if there is no session or role !== ADMIN.
+ */
 export async function requireAdmin() {
-  const session = await auth();
+  const session = await getServerSession(authOptions);
+  const role = (session?.user as any)?.role;
 
-  if (!session?.user?.email) {
-    throw new Error("Unauthorized");
+  if (!session || role !== "ADMIN") {
+    throw new Error("Not authorized");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email as string },
-  });
-
-  if (!user || user.role !== "ADMIN") {
-    throw new Error("Unauthorized");
-  }
-
-  return user;
+  return session;
 }
-
-// Client-side helpers (used in login page etc.)
-export const signIn = nextAuthSignIn;
-export const signOut = nextAuthSignOut;
