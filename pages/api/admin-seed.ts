@@ -1,11 +1,13 @@
-import { NextResponse } from "next/server";
+import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
 
-// Prevent Vercel from trying to pre-render this API route at build time
-export const dynamic = "force-dynamic";
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "GET") {
+    res.status(405).json({ ok: false, error: "Method not allowed" });
+    return;
+  }
 
-export async function GET() {
   try {
     const email = "opsprotocoltools@gmail.com";
     const password = "8y6jK3211@!";
@@ -22,11 +24,8 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({ ok: true, message: "Admin user created." });
+    res.status(200).json({ ok: true, message: "Admin user created." });
   } catch (err) {
-    return NextResponse.json({
-      ok: false,
-      error: (err as Error).message,
-    });
+    res.status(500).json({ ok: false, error: (err as Error).message });
   }
 }
