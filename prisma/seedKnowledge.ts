@@ -2,63 +2,75 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log("Seeding KnowledgeChunk records...");
+/**
+ * Seeds knowledge chunks used for internal documentation / testing.
+ */
 
-  const knowledgeChunks = [
-    {
-      domain: "bridge",
-      source: "system",
-      priority: 10,
-      tags: "bridge,theory,structure,ops",
-      content:
-        "Bridge = stable connective layer between people and systems. Track events chronologically, remove drama, preserve factual continuity.",
-    },
-    {
-      domain: "bridge",
-      source: "system",
-      priority: 9,
-      tags: "bridge,parenting,co-parenting",
-      content:
-        "In co-parenting, Bridge focuses on verifiable events affecting the child: handoffs, logistics, agreements, and environment quality.",
-    },
-    {
-      domain: "phase-map",
-      source: "system",
-      priority: 10,
-      tags: "phases,states,relationships",
-      content:
-        "Phase Map = discrete relational states. No story-writing. Identify current phase, constraints, and allowed moves without fantasy.",
-    },
-    {
-      domain: "sunday-dump",
-      source: "system",
-      priority: 10,
-      tags: "review,weekly,ops",
-      content:
-        "Sunday Dump = weekly factual recap. Inputs: events, decisions, tensions, wins. Outputs: status, risks, and next actions.",
-    },
-    {
-      domain: "coach",
-      source: "system",
-      priority: 10,
-      tags: "coach,ops,protocol",
-      content:
-        "Coach responds with concise, unemotional guidance: clarify facts, map to Bridge/Phase/Sunday layers, return concrete next actions.",
-    },
-  ];
+const knowledgeChunks = [
+  {
+    title: "Ops Protocol Tools Overview",
+    domain: "ops-protocol",
+    source: "seed",
+    priority: 1,
+    tags: "overview,system,admin",
+    content:
+      "High-level description of the Ops Protocol Tools platform: Next.js 14, Prisma, NextAuth, PostgreSQL, Vercel."
+  },
+  {
+    title: "Admin Login and Roles",
+    domain: "auth",
+    source: "seed",
+    priority: 2,
+    tags: "auth,admin,roles",
+    content:
+      "Initial admin account seeded with a fixed email and password. Role=ADMIN controls access to /admin routes."
+  },
+  {
+    title: "Analytics Event Logging",
+    domain: "analytics",
+    source: "seed",
+    priority: 3,
+    tags: "analytics,events,logging",
+    content:
+      "AnalyticsEvent records track page views and actions and are visible in the /admin/analytics dashboard."
+  },
+  {
+    title: "Books Registry",
+    domain: "books",
+    source: "seed",
+    priority: 4,
+    tags: "books,registry",
+    content:
+      "Book records represent Ops Protocol titles managed via /admin/books and used in the publishing pipeline."
+  },
+  {
+    title: "Tools Registry",
+    domain: "tools",
+    source: "seed",
+    priority: 5,
+    tags: "tools,registry",
+    content:
+      "Tool records define Ops Protocol utilities like Bridge Timeline Manager, Phase Chart Dashboard, Sunday Dump Console."
+  }
+];
+
+async function main() {
+  if (knowledgeChunks.length === 0) {
+    console.log("No knowledge chunks to seed.");
+    return;
+  }
 
   await prisma.knowledgeChunk.createMany({
     data: knowledgeChunks,
-    skipDuplicates: true,
+    skipDuplicates: true
   });
 
-  console.log("KnowledgeChunk seeding complete.");
+  console.log(`✅ Seeded ${knowledgeChunks.length} knowledge chunks.`);
 }
 
 main()
   .catch((error) => {
-    console.error("Error seeding KnowledgeChunk:", error);
+    console.error("SeedKnowledge error:", error);
     process.exit(1);
   })
   .finally(async () => {

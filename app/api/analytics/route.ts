@@ -1,51 +1,100 @@
-import { NextResponse } from "next/server";
+// app/api/analytics/route.ts
 
-type AnalyticsBody = {
-  event?: string;
-  userId?: number | string | null;
-  metadata?: Record<string, any> | null;
-};
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions, requireAdmin } from "@/lib/auth";
 
 /**
  * POST /api/analytics
- * Runtime: logs event.
- * Build / no DB: quietly skips.
+ * Lightweight logger for client and server events.
+ *
+ * Request body JSON:
+ * {
+ *   "event": "string",            // required
+ *   "type": "string",             // optional, e.g. "pageview" | "action" | "error"
+ *   "metadata": { ... }           // optional, must be JSON-serializable
+ * }
+ *
+ * Associates event with current authenticated user if present.
  */
+
 export async function POST(req: Request) {
   try {
-    if (!process.env.DATABASE_URL) {
-      return NextResponse.json({ ok: true, skipped: true });
+    const session = await getServerSession(authOptions);
+    const body = await req.json().catch(() => ({}));
+
+    const event = typeof body.event === "string" ? body.event.trim() : "";
+    const type =
+      typeof body.type === "string" && body.type.trim().length > 0
+        ? body.type.trim()
+        : "event";
+    const rawMetadata =
+      body.metadata && typeof body.metadata === "object"
+        ? body.metadata
+        : {};
+
+    if (!event) {
+      return NextResponse.json(
+        { error: "Missing 'event' string" },
+        { status: 400 }
+      );
     }
 
-    const body = (await req.json()) as AnalyticsBody;
-    const rawUserId = body.userId;
-    let normalizedUserId: number | null = null;
-
-    if (rawUserId !== null && rawUserId !== undefined && rawUserId !== "") {
-      const n = typeof rawUserId === "number" ? rawUserId : Number(rawUserId);
-      normalizedUserId = Number.isNaN(n) ? null : n;
-    }
-
-    const { default: prisma } = await import("@/lib/prisma");
+    // Hard limit metadata size to keep table sane.
+    const metadataString = JSON.stringify(rawMetadata);
+    const metadata =
+      metadataString.length > 4000
+        ? { truncated: true }
+        : rawMetadata;
 
     await prisma.analyticsEvent.create({
       data: {
-        event: body.event || "unknown",
-        userId: normalizedUserId,
-        metadata: body.metadata ?? {},
+        event,
+        type,
+        metadata,
+        userId: session?.user?.id ?? null,
       },
     });
 
-    return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ ok: true, skipped: true });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Analytics POST error:", error);
+    return NextResponse.json(
+      { error: "Server error" },
+      { status: 500 }
+    );
   }
 }
 
 /**
  * GET /api/analytics
- * Health check for route probing.
+ * Admin-only view of recent analytics events (for API / programmatic use).
  */
+
 export async function GET() {
-  return NextResponse.json({ ok: true });
+  try {
+    await requireAdmin();
+
+    const events = await prisma.analyticsEvent.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json({ events });
+  } catch (error: any) {
+    const status = error?.message === "UNAUTHORIZED" ? 403 : 500;
+    return NextResponse.json(
+      { error: "Not allowed" },
+      { status }
+    );
+  }
 }

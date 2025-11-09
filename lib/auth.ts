@@ -1,88 +1,125 @@
-import { NextAuthOptions, getServerSession } from "next-auth";
-import Credentials from "next-auth/providers/credentials";
+// lib/auth.ts
+
+import type { NextAuthOptions, User as NextAuthUser } from "next-auth";
+import { getServerSession } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { Pool } from "pg";
+import prisma from "./prisma";
+import { Role } from "@prisma/client";
 
-// Single shared Postgres pool using DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+declare module "next-auth" {
+  interface User {
+    id: number;
+    role: Role;
+  }
 
-async function findUserByEmail(email: string) {
-  if (!process.env.DATABASE_URL) return null;
+  interface Session {
+    user: {
+      id: number;
+      email: string;
+      role: Role;
+      name?: string | null;
+    };
+  }
+}
 
-  const client = await pool.connect();
-  try {
-    const result = await client.query(
-      `SELECT id, email, "passwordHash", role, name FROM "User" WHERE email = $1 LIMIT 1`,
-      [email]
-    );
-    if (result.rowCount === 0) return null;
-    return result.rows[0];
-  } finally {
-    client.release();
+declare module "next-auth/jwt" {
+  interface JWT {
+    id?: number;
+    role?: Role;
   }
 }
 
 export const authOptions: NextAuthOptions = {
+  session: {
+    strategy: "jwt",
+    maxAge: 60 * 60, // 1 hour
+  },
+  pages: {
+    signIn: "/login",
+  },
   providers: [
-    Credentials({
+    CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "text" },
+        email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = credentials?.email || "";
-        const password = credentials?.password || "";
+        if (!credentials?.email || !credentials.password) {
+          return null;
+        }
 
-        if (!email || !password) return null;
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
 
-        const user = await findUserByEmail(email);
-        if (!user) return null;
+        if (!user || !user.passwordHash) {
+          return null;
+        }
 
-        const match = await bcrypt.compare(password, user.passwordhash || user.passwordHash);
-        if (!match) return null;
+        const isValid = await bcrypt.compare(
+          credentials.password,
+          user.passwordHash
+        );
 
-        return {
-          id: String(user.id),
+        if (!isValid) {
+          // basic brute-force logging hook (non-blocking)
+          await prisma.loginAttempt.create({
+            data: {
+              email: credentials.email,
+              ip: null,
+              success: false,
+            },
+          });
+          return null;
+        }
+
+        await prisma.loginAttempt.create({
+          data: {
+            email: credentials.email,
+            ip: null,
+            success: true,
+          },
+        });
+
+        const result: NextAuthUser = {
+          id: user.id,
           email: user.email,
-          name: user.name ?? "",
+          name: user.name ?? null,
           role: user.role,
         };
+
+        return result;
       },
     }),
   ],
-  session: {
-    strategy: "jwt",
-  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        const u = user as any;
-        token.id = u.id;
-        token.role = u.role;
+        token.id = (user as any).id;
+        token.role = (user as any).role;
       }
       return token;
     },
     async session({ session, token }) {
-      if (session.user && token) {
-        (session.user as any).id = token.id;
-        (session.user as any).role = token.role;
+      if (session.user && token.id && token.role) {
+        session.user.id = token.id as number;
+        session.user.role = token.role as Role;
       }
       return session;
     },
   },
 };
 
+export async function getServerAuthSession() {
+  return getServerSession(authOptions);
+}
+
 export async function requireAdmin() {
   const session = await getServerSession(authOptions);
-  const role = (session?.user as any)?.role;
-
-  if (!session || role !== "ADMIN") {
-    throw new Error("Not authorized");
+  if (!session?.user || session.user.role !== "ADMIN") {
+    throw new Error("UNAUTHORIZED");
   }
-
   return session.user;
 }

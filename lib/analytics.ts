@@ -1,47 +1,35 @@
-import prisma from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+// lib/analytics.ts
 
-type AnalyticsMetadata = Prisma.InputJsonValue;
-
-type LogEventOptions = {
-  userId?: number | null;
-  metadata?: AnalyticsMetadata;
-};
+import prisma from "./prisma";
 
 /**
- * logEvent
- *
- * Minimal, schema-accurate analytics helper.
- * Persists rows into AnalyticsEvent:
- * - event: string (required)
- * - userId: number | null
- * - metadata: Json (object/array/primitive), defaults to {}.
+ * Server-side helper for logging analytics events directly via Prisma.
+ * Use from server components / API routes only.
  */
-export async function logEvent(
-  event: string,
-  options: LogEventOptions = {}
-): Promise<void> {
-  if (!event || typeof event !== "string") {
-    return;
-  }
+export async function logAnalyticsEvent(options: {
+  event: string;
+  type?: string;
+  userId?: number | null;
+  metadata?: Record<string, any>;
+}) {
+  const event = options.event?.trim();
+  if (!event) return;
 
-  const normalizedUserId =
-    typeof options.userId === "number" && Number.isFinite(options.userId)
-      ? options.userId
-      : null;
+  const type = options.type?.trim() || "event";
+  const rawMetadata = options.metadata || {};
 
-  try {
-    await prisma.analyticsEvent.create({
-      data: {
-        event,
-        userId: normalizedUserId,
-        metadata: (options.metadata ?? {}) as Prisma.InputJsonValue
-      }
-    });
-  } catch (error) {
-    // Analytics must never break the app.
-    if (process.env.NODE_ENV === "development") {
-      console.error("logEvent error:", error);
-    }
-  }
+  const metadataString = JSON.stringify(rawMetadata);
+  const metadata =
+    metadataString.length > 4000
+      ? { truncated: true }
+      : rawMetadata;
+
+  await prisma.analyticsEvent.create({
+    data: {
+      event,
+      type,
+      metadata,
+      userId: options.userId ?? null,
+    },
+  });
 }

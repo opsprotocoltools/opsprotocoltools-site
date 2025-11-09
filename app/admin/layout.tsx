@@ -1,68 +1,56 @@
-﻿// app/admin/layout.tsx
+﻿import Link from "next/link";
+import type { ReactNode } from "react";
+import { requireAdmin } from "@/lib/auth";
 
-"use client";
-
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
-import { ReactNode } from "react";
-
-const links = [
+const navItems = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/books", label: "Books" },
   { href: "/admin/tools", label: "Tools" },
   { href: "/admin/analytics", label: "Analytics" },
+  { href: "/admin/logins", label: "Login Events" },
+  { href: "/admin/errors", label: "Error Events" },
+  { href: "/admin/heartbeats", label: "Heartbeats" },
+  { href: "/admin/system", label: "System Status" }
 ];
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
-  const pathname = usePathname() || "";
-  const router = useRouter();
-
-  function handleLogout() {
-    signOut({ callbackUrl: "/" });
-  }
+export default async function AdminLayout({
+  children
+}: {
+  children: ReactNode;
+}) {
+  await requireAdmin();
 
   return (
-    <div className="flex min-h-[80vh]">
-      <aside className="hidden w-52 flex-col border-r border-slate-800 bg-slate-950/95 px-4 py-5 text-[10px] text-slate-300 md:flex">
-        <div className="mb-4 text-[9px] font-semibold uppercase tracking-[0.18em] text-cyan-400">
-          Ops Admin
-        </div>
-        <nav className="flex flex-1 flex-col gap-1">
-          {links.map((link) => {
-            const active =
-              link.href === "/admin"
-                ? pathname === "/admin"
-                : pathname.startsWith(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`rounded-xl px-3 py-2 transition-colors ${
-                  active
-                    ? "bg-cyan-500/10 text-cyan-300"
-                    : "text-slate-400 hover:bg-slate-900 hover:text-cyan-200"
-                }`}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="mt-4 flex flex-col gap-2">
-          <div className="text-[8px] text-slate-500">
-            Environment: <span className="text-emerald-400">Production</span>
+    <div className="flex min-h-screen bg-black text-gray-100">
+      {/* Sidebar */}
+      <aside className="w-64 bg-[#05070B] border-r border-gray-800 flex flex-col">
+        <div className="px-5 py-4 border-b border-gray-800">
+          <div className="text-xs uppercase tracking-[0.18em] text-gray-500">
+            Ops Protocol
           </div>
-          <button
-            onClick={handleLogout}
-            className="rounded-full border border-slate-700 px-3 py-1 text-[9px] text-slate-300 hover:border-red-400 hover:text-red-300"
-          >
-            Logout
-          </button>
+          <div className="text-lg font-semibold text-gray-100">
+            Admin Console
+          </div>
+        </div>
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-900 transition-colors"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="px-4 py-3 border-t border-gray-800 text-[10px] text-gray-500">
+          Ops Protocol Tools • Internal
         </div>
       </aside>
-      <main className="flex-1 px-4 py-6 md:px-6">
+
+      {/* Main content */}
+      <main className="flex-1 bg-gradient-to-br from-[#020308] via-[#020308] to-[#050818]">
         {children}
       </main>
     </div>

@@ -1,81 +1,82 @@
-import { requireAdmin } from "@/lib/auth";
-import { Pool } from "pg";
-
-export const dynamic = "force-dynamic";
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+import prisma from "@/lib/prisma";
 
 export default async function AdminUsersPage() {
-  await requireAdmin();
-
-  if (!process.env.DATABASE_URL) {
-    return (
-      <div className="p-6">
-        <h1 className="text-2xl font-semibold mb-4">Users</h1>
-        <p className="text-red-600">DATABASE_URL is not configured.</p>
-      </div>
-    );
-  }
-
-  let users: {
-    id: number;
-    email: string;
-    role: string;
-    name: string | null;
-    createdAt: string;
-  }[] = [];
-
-  const client = await pool.connect();
-  try {
-    const result = await client.query(
-      `SELECT id, email, role, name, "createdAt"
-       FROM "User"
-       ORDER BY id ASC
-       LIMIT 100;`
-    );
-    users = result.rows;
-  } catch {
-    users = [];
-  } finally {
-    client.release();
-  }
+  const users = await prisma.user.findMany({
+    orderBy: { id: "asc" },
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true
+    }
+  });
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">Users</h1>
-      {users.length === 0 ? (
-        <p className="text-gray-600">
-          No users found or database query failed.
-        </p>
-      ) : (
-        <table className="min-w-full border border-gray-200 text-sm">
-          <thead className="bg-gray-50">
+    <div className="max-w-6xl mx-auto py-10 px-8">
+      <h1 className="text-2xl font-semibold text-white mb-2">
+        Users
+      </h1>
+      <p className="text-sm text-gray-400 mb-4">
+        Read-only list of users with roles and creation timestamps.
+      </p>
+
+      <div className="overflow-x-auto border border-gray-800 rounded-xl bg-[#05070B]">
+        <table className="min-w-full text-xs">
+          <thead className="bg-black/70">
             <tr>
-              <th className="border px-3 py-2 text-left">ID</th>
-              <th className="border px-3 py-2 text-left">Email</th>
-              <th className="border px-3 py-2 text-left">Name</th>
-              <th className="border px-3 py-2 text-left">Role</th>
-              <th className="border px-3 py-2 text-left">Created</th>
+              <th className="px-3 py-2 text-left text-gray-500">ID</th>
+              <th className="px-3 py-2 text-left text-gray-500">
+                Email
+              </th>
+              <th className="px-3 py-2 text-left text-gray-500">
+                Role
+              </th>
+              <th className="px-3 py-2 text-left text-gray-500">
+                Created
+              </th>
+              <th className="px-3 py-2 text-left text-gray-500">
+                Updated
+              </th>
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className="border-t">
-                <td className="border px-3 py-2">{u.id}</td>
-                <td className="border px-3 py-2">{u.email}</td>
-                <td className="border px-3 py-2">{u.name ?? ""}</td>
-                <td className="border px-3 py-2">{u.role}</td>
-                <td className="border px-3 py-2">
-                  {new Date(u.createdAt).toLocaleString()}
+            {users.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="px-3 py-4 text-center text-gray-500"
+                >
+                  No users found.
                 </td>
               </tr>
-            ))}
+            ) : (
+              users.map((user) => (
+                <tr
+                  key={user.id}
+                  className="border-t border-gray-800 hover:bg-gray-900/60"
+                >
+                  <td className="px-3 py-2 text-gray-300">
+                    {user.id}
+                  </td>
+                  <td className="px-3 py-2 text-gray-100">
+                    {user.email}
+                  </td>
+                  <td className="px-3 py-2 text-gray-300">
+                    {user.role}
+                  </td>
+                  <td className="px-3 py-2 text-gray-500 whitespace-nowrap">
+                    {user.createdAt.toISOString()}
+                  </td>
+                  <td className="px-3 py-2 text-gray-500 whitespace-nowrap">
+                    {user.updatedAt.toISOString()}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
-      )}
+      </div>
     </div>
   );
 }

@@ -1,84 +1,75 @@
-﻿import { requireAdmin } from "@/lib/auth";
-import { Pool } from "pg";
-
-export const dynamic = "force-dynamic";
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+﻿import prisma from "@/lib/prisma";
 
 export default async function AdminBooksPage() {
-  await requireAdmin();
-
-  if (!process.env.DATABASE_URL) {
-    return (
-      <div className="p-6">
-        <h1 className="text-2xl font-semibold mb-4">Books</h1>
-        <p className="text-red-600">DATABASE_URL is not configured.</p>
-      </div>
-    );
-  }
-
-  let books: {
-    id: number;
-    title: string;
-    slug: string;
-    description: string | null;
-    createdAt: string;
-    updatedAt: string;
-  }[] = [];
-
-  const client = await pool.connect();
-  try {
-    const result = await client.query(
-      `SELECT id, title, slug, description, "createdAt", "updatedAt"
-       FROM "Book"
-       ORDER BY "createdAt" DESC
-       LIMIT 100;`
-    );
-    books = result.rows;
-  } catch {
-    books = [];
-  } finally {
-    client.release();
-  }
+  const books = await prisma.book.findMany({
+    orderBy: { id: "asc" }
+  });
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">Books</h1>
-      {books.length === 0 ? (
-        <p className="text-gray-600">
-          No books found or database query failed.
-        </p>
-      ) : (
-        <table className="min-w-full border border-gray-200 text-sm">
-          <thead className="bg-gray-50">
+    <div className="max-w-6xl mx-auto py-10 px-8">
+      <h1 className="text-2xl font-semibold text-white mb-2">
+        Books
+      </h1>
+      <p className="text-sm text-gray-400 mb-4">
+        Registry of Ops Protocol books managed by the system.
+      </p>
+
+      <div className="overflow-x-auto border border-gray-800 rounded-xl bg-[#05070B]">
+        <table className="min-w-full text-xs">
+          <thead className="bg-black/70">
             <tr>
-              <th className="border px-3 py-2 text-left">ID</th>
-              <th className="border px-3 py-2 text-left">Title</th>
-              <th className="border px-3 py-2 text-left">Slug</th>
-              <th className="border px-3 py-2 text-left">Created</th>
-              <th className="border px-3 py-2 text-left">Updated</th>
+              <th className="px-3 py-2 text-left text-gray-500">ID</th>
+              <th className="px-3 py-2 text-left text-gray-500">
+                Title
+              </th>
+              <th className="px-3 py-2 text-left text-gray-500">
+                Slug
+              </th>
+              <th className="px-3 py-2 text-left text-gray-500">
+                Description
+              </th>
+              <th className="px-3 py-2 text-left text-gray-500">
+                Updated
+              </th>
             </tr>
           </thead>
           <tbody>
-            {books.map((b) => (
-              <tr key={b.id} className="border-t">
-                <td className="border px-3 py-2">{b.id}</td>
-                <td className="border px-3 py-2">{b.title}</td>
-                <td className="border px-3 py-2">{b.slug}</td>
-                <td className="border px-3 py-2">
-                  {new Date(b.createdAt).toLocaleString()}
-                </td>
-                <td className="border px-3 py-2">
-                  {new Date(b.updatedAt).toLocaleString()}
+            {books.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="px-3 py-4 text-center text-gray-500"
+                >
+                  No books found.
                 </td>
               </tr>
-            ))}
+            ) : (
+              books.map((book) => (
+                <tr
+                  key={book.id}
+                  className="border-t border-gray-800 hover:bg-gray-900/60 align-top"
+                >
+                  <td className="px-3 py-2 text-gray-300">
+                    {book.id}
+                  </td>
+                  <td className="px-3 py-2 text-gray-100">
+                    {book.title}
+                  </td>
+                  <td className="px-3 py-2 text-gray-400">
+                    {book.slug}
+                  </td>
+                  <td className="px-3 py-2 text-gray-500 max-w-md break-words">
+                    {book.description || "-"}
+                  </td>
+                  <td className="px-3 py-2 text-gray-500 whitespace-nowrap">
+                    {book.updatedAt.toISOString()}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
-      )}
+      </div>
     </div>
   );
 }

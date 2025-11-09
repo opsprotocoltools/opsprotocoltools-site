@@ -2,49 +2,46 @@
   "name": "opsprotocoltools-site",
   "version": "1.0.0",
   "private": true,
-  "description": "Ops Protocol Tools — Next.js 14 + Prisma + NextAuth + PostgreSQL stack with automated ops spec generation and verification.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:generate": "prisma generate",
-    "prisma:seed": "ts-node prisma/seed.ts",
-    "prisma:seed:knowledge": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seedKnowledge.ts",
     "ops:gen": "node ops/generateDocs.mjs",
     "ops:verify": "node ops/verify.mjs",
-    "ops:check": "npm run ops:gen && npm run ops:verify"
+    "ops:check": "npm run ops:gen && npm run ops:verify",
+    "db:generate": "npx prisma generate",
+    "db:migrate": "npx prisma migrate dev",
+    "db:push": "npx prisma db push",
+    "db:seed": "npx prisma db seed"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.14.0",
-    "bcryptjs": "^2.4.3",
+    "@prisma/client": "^5.22.0",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.3",
     "next": "14.0.4",
-    "next-auth": "^4.24.6",
-    "pg": "^8.16.3",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "recharts": "^2.10.3",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5.4.3"
+    "next-auth": "^4.24.13",
+    "pg": "^8.11.3",
+    "prisma": "^5.22.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "recharts": "^3.3.0",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.3"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.2",
+    "@types/bcrypt": "^5.0.2",
     "@types/node": "^20.10.6",
-    "@types/react": "^18.2.50",
-    "@types/react-dom": "^18.2.18",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
     "autoprefixer": "^10.4.16",
-    "husky": "^9.0.10",
-    "postcss": "^8.4.33",
-    "prisma": "^5.14.0",
-    "simple-git-hooks": "^2.9.0",
+    "postcss": "^8.4.31",
     "ts-node": "^10.9.2"
   },
-  "simple-git-hooks": {
-    "pre-commit": "npm run ops:check"
-  },
   "engines": {
-    "node": ">=18.17.0"
-  },
-  "license": "MIT"
+    "node": ">=18.0.0"
+  }
 }

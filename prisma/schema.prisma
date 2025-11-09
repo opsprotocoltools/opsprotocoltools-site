@@ -1,35 +1,86 @@
-generator client {
-  provider = "prisma-client-js"
-}
+// prisma/schema.prisma
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------- Roles ----------
+
 enum Role {
   ADMIN
   USER
 }
 
+// ---------- Core user + NextAuth models ----------
+
 model User {
-  id               Int               @id @default(autoincrement())
-  email            String            @unique
-  passwordHash     String
-  role             Role              @default(USER)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  analyticsEvents  AnalyticsEvent[]
+  id                 Int                 @id @default(autoincrement())
+  email              String              @unique
+  passwordHash       String
+  role               Role                @default(USER)
+  name               String?
+  mfaEnabled         Boolean             @default(false)
+  mfaSecret          String?             
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  // NextAuth relations
+  accounts           Account[]
+  sessions           Session[]
+
+  // Domain relations
+  analyticsEvents    AnalyticsEvent[]
+  auditLogs          AuditLog[]
+  coachRequests      CoachRequest[]
+
+  // Optional convenience
+  loginAttempts      LoginAttempt[]
 }
 
-model AnalyticsEvent {
-  id         Int       @id @default(autoincrement())
-  event      String?
-  userId     Int?
-  user       User?     @relation(fields: [userId], references: [id])
-  metadata   Json?
-  createdAt  DateTime  @default(now())
+// Standard NextAuth account model
+model Account {
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
 }
+
+// Standard NextAuth session model
+model Session {
+  id           Int      @id @default(autoincrement())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------- Content models ----------
 
 model Book {
   id          Int       @id @default(autoincrement())
@@ -47,4 +98,93 @@ model Tool {
   description String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model KnowledgeChunk {
+  id        Int      @id @default(autoincrement())
+  domain    String
+  source    String
+  priority  Int      @default(0)
+  tags      String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- Analytics events ----------
+
+model AnalyticsEvent {
+  id        Int      @id @default(autoincrement())
+  event     String
+  type      String
+  metadata  Json
+  createdAt DateTime @default(now())
+
+  userId Int?
+  user   User? @relation(fields: [userId], references: [id])
+}
+
+// ---------- Audit logging ----------
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  role      String
+  action    String
+  route     String?
+  ip        String?
+  userAgent String?
+  metadata  Json
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+// ---------- Login attempts (for brute-force detection) ----------
+
+model LoginAttempt {
+  id        Int      @id @default(autoincrement())
+  email     String
+  ip        String?
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  userId Int?
+  user   User? @relation(fields: [userId], references: [id])
+}
+
+// ---------- Service accounts ----------
+
+model ServiceAccount {
+  id            Int            @id @default(autoincrement())
+  name          String
+  apiKeyHash    String         @unique
+  role          String         @default("SERVICE")
+  createdAt     DateTime       @default(now())
+  lastUsedAt    DateTime?
+  coachRequests CoachRequest[]
+}
+
+// ---------- AI Coach request log ----------
+
+model CoachRequest {
+  id               Int            @id @default(autoincrement())
+  serviceAccountId Int
+  userId           Int?
+  inputHash        String
+  outputHash       String
+  createdAt        DateTime       @default(now())
+
+  serviceAccount ServiceAccount @relation(fields: [serviceAccountId], references: [id])
+  user           User?          @relation(fields: [userId], references: [id])
+}
+
+// ---------- Heartbeat ----------
+
+model Heartbeat {
+  id        Int      @id @default(autoincrement())
+  type      String
+  ok        Boolean
+  message   String?
+  createdAt DateTime @default(now())
 }

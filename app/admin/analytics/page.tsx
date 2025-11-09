@@ -1,95 +1,74 @@
-﻿import { requireAdmin } from "@/lib/auth";
+﻿// app/admin/analytics/page.tsx
 
-export const dynamic = "force-dynamic";
-
-const isBuildPhase =
-  !!process.env.VERCEL &&
-  process.env.NEXT_PHASE === "phase-production-build";
-
-type AnalyticsRow = {
-  id: number;
-  event: string;
-  createdAt: string;
-  userId: number | null;
-  userEmail: string | null;
-};
+import prisma from "@/lib/prisma";
+import { requireAdmin } from "@/lib/auth";
 
 export default async function AdminAnalyticsPage() {
-  // Gate: only admins
   await requireAdmin();
 
-  // Do NOT touch Prisma during Vercel build or if DB is missing.
-  if (isBuildPhase || !process.env.DATABASE_URL) {
-    return (
-      <div className="p-6">
-        <h1 className="text-2xl font-semibold mb-4">Analytics Events</h1>
-        <p className="text-gray-600">
-          Analytics data loads at runtime. Skipping database access during
-          build.
-        </p>
-      </div>
-    );
-  }
+  const events = await prisma.analyticsEvent.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+        },
+      },
+    },
+  });
 
-  // Lazy-load Prisma only at runtime
-  const { default: prisma } = await import("@/lib/prisma");
-
-  let events: AnalyticsRow[] = [];
-
-  try {
-    // Required by your spec:
-    // - use prisma.analyticsEvent
-    // - include user relation
-    const rows = await prisma.analyticsEvent.findMany({
-      include: { user: true },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    });
-
-    events = rows.map((e) => ({
-      id: e.id,
-      event: e.event || "unknown",
-      createdAt: e.createdAt.toISOString(),
-      userId: e.userId ?? null,
-      userEmail: e.user?.email ?? null,
-    }));
-  } catch (error) {
-    console.error("Failed to load analytics events:", error);
-    events = [];
-  }
+  const total = await prisma.analyticsEvent.count();
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">Analytics Events</h1>
+    <div className="p-8 space-y-4">
+      <div className="flex items-baseline justify-between gap-4">
+        <h1 className="text-2xl font-semibold">Analytics Events</h1>
+        <div className="text-xs text-neutral-400">
+          Showing last {events.length} of {total} total
+        </div>
+      </div>
 
       {events.length === 0 ? (
-        <p className="text-gray-600">
-          No analytics events found or query failed.
-        </p>
+        <div className="text-sm text-neutral-400">
+          No analytics events logged yet. Once the site starts sending events to{" "}
+          <code className="px-1 py-0.5 bg-neutral-900/80 rounded">
+            /api/analytics
+          </code>{" "}
+          they will appear here.
+        </div>
       ) : (
-        <table className="min-w-full border border-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="border px-3 py-2 text-left">ID</th>
-              <th className="border px-3 py-2 text-left">Event</th>
-              <th className="border px-3 py-2 text-left">User Email</th>
-              <th className="border px-3 py-2 text-left">User ID</th>
-              <th className="border px-3 py-2 text-left">Created At</th>
+        <table className="w-full text-sm border border-neutral-800">
+          <thead>
+            <tr className="bg-neutral-900">
+              <th className="p-2 text-left">When</th>
+              <th className="p-2 text-left">Event</th>
+              <th className="p-2 text-left">Type</th>
+              <th className="p-2 text-left">User</th>
+              <th className="p-2 text-left">Metadata</th>
             </tr>
           </thead>
           <tbody>
             {events.map((e) => (
-              <tr key={e.id} className="border-t">
-                <td className="border px-3 py-2">{e.id}</td>
-                <td className="border px-3 py-2">{e.event}</td>
-                <td className="border px-3 py-2">
-                  {e.userEmail || "—"}
-                </td>
-                <td className="border px-3 py-2">
-                  {e.userId !== null ? e.userId : "—"}
-                </td>
-                <td className="border px-3 py-2">
+              <tr
+                key={e.id}
+                className="border-t border-neutral-800 align-top"
+              >
+                <td className="p-2 whitespace-nowrap text-xs text-neutral-400">
                   {new Date(e.createdAt).toLocaleString()}
+                </td>
+                <td className="p-2 font-mono text-xs">{e.event}</td>
+                <td className="p-2 text-xs text-neutral-400">{e.type}</td>
+                <td className="p-2 text-xs">
+                  {e.user
+                    ? `${e.user.email} (#${e.user.id})`
+                    : "anon"}
+                </td>
+                <td className="p-2 text-[10px] text-neutral-400 max-w-xs">
+                  <pre className="overflow-x-auto whitespace-pre-wrap break-words">
+                    {JSON.stringify(e.metadata || {}, null, 2)}
+                  </pre>
                 </td>
               </tr>
             ))}
